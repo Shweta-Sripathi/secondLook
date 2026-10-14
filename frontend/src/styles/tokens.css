@@ -1,0 +1,118 @@
+/* ===========================================================
+   secondLook Design Tokens
+   Premium dashboard-inspired color system with blue accent
+   =========================================================== */
+
+:root {
+  /* --- Core backgrounds --- */
+  --sl-bg-cream:        #F0F4FA;
+  --sl-bg-white:        #FFFFFF;
+  --sl-bg-gray-50:      #F7F9FC;
+  --sl-bg-gray-100:     #EEF2F7;
+  --sl-bg-gray-200:     #DCE3ED;
+
+  --sl-ink:             #0F172A;
+  --sl-ink-secondary:   #1E293B;
+  --sl-text-muted:      #64748B;
+  --sl-text-subtle:     #94A3B8;
+  --sl-text-on-primary: #FFFFFF;
+
+  /* --- Primary accent: blue --- */
+  --sl-primary:         #2563EB;
+  --sl-primary-hover:   #1D4ED8;
+  --sl-primary-light:   #DBEAFE;
+  --sl-primary-soft:    #93C5FD;
+  --sl-primary-bg:      #EFF6FF;
+
+  /* --- Semantic colors --- */
+  --sl-success:         #059669;
+  --sl-success-light:   #D1FAE5;
+  --sl-success-text:    #065F46;
+
+  --sl-warning:         #D97706;
+  --sl-warning-light:   #FEF3C7;
+  --sl-warning-text:    #92400E;
+
+  --sl-danger:          #DC2626;
+  --sl-danger-light:    #FEE2E2;
+  --sl-danger-text:     #991B1B;
+
+  --sl-info:            #0284C7;
+  --sl-info-light:      #E0F2FE;
+
+  /* --- Typography --- */
+  --sl-font-family:     'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --sl-font-mono:       'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+
+  --sl-text-xs:         0.75rem;
+  --sl-text-sm:         0.875rem;
+  --sl-text-base:       1rem;
+  --sl-text-lg:         1.125rem;
+  --sl-text-xl:         1.25rem;
+  --sl-text-2xl:        1.5rem;
+  --sl-text-3xl:        1.875rem;
+  --sl-text-4xl:        2.25rem;
+  --sl-text-5xl:        3rem;
+
+  --sl-leading-tight:   1.25;
+  --sl-leading-normal:  1.5;
+  --sl-leading-relaxed: 1.625;
+
+  --sl-tracking-tight:  -0.025em;
+  --sl-tracking-normal: 0;
+  --sl-tracking-wide:   0.05em;
+
+  /* --- Spacing scale (4px base) --- */
+  --sl-space-0:   0;
+  --sl-space-1:   0.25rem;
+  --sl-space-2:   0.5rem;
+  --sl-space-3:   0.75rem;
+  --sl-space-4:   1rem;
+  --sl-space-5:   1.25rem;
+  --sl-space-6:   1.5rem;
+  --sl-space-8:   2rem;
+  --sl-space-10:  2.5rem;
+  --sl-space-12:  3rem;
+  --sl-space-16:  4rem;
+  --sl-space-20:  5rem;
+
+  /* --- Border radius --- */
+  --sl-radius-sm:   6px;
+  --sl-radius-md:   10px;
+  --sl-radius-lg:   14px;
+  --sl-radius-xl:   18px;
+  --sl-radius-2xl:  24px;
+  --sl-radius-full: 9999px;
+
+  /* --- Shadows --- */
+  --sl-shadow-xs:   0 1px 2px rgba(0, 0, 0, 0.04);
+  --sl-shadow-sm:   0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.03);
+  --sl-shadow-md:   0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.03);
+  --sl-shadow-lg:   0 10px 15px -3px rgba(0, 0, 0, 0.06), 0 4px 6px -4px rgba(0, 0, 0, 0.03);
+  --sl-shadow-xl:   0 20px 25px -5px rgba(0, 0, 0, 0.06), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
+  --sl-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.02);
+  --sl-shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04);
+
+  /* --- Borders --- */
+  --sl-border-color:    #E2E8F0;
+  --sl-border-light:    #F1F5F9;
+
+  /* --- Z-indexes --- */
+  --sl-z-dropdown:  50;
+  --sl-z-sticky:    100;
+  --sl-z-modal:     1000;
+  --sl-z-toast:     1100;
+  --sl-z-tooltip:   1200;
+
+  /* --- Transitions --- */
+  --sl-transition-fast:   150ms ease;
+  --sl-transition-base:   250ms ease;
+  --sl-transition-slow:   350ms ease;
+
+  /* --- Max widths --- */
+  --sl-max-width-sm:  640px;
+  --sl-max-width-md:  768px;
+  --sl-max-width-lg:  1024px;
+  --sl-max-width-xl:  1280px;
+  --sl-max-width-2xl: 1440px;
+}
