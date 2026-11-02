@@ -3,9 +3,9 @@ import API from '../services/api';
 import { AuthContext } from '../context/AuthContext';
 import Dropzone from '../components/Dropzone';
 import {
-  FileText, Upload, Briefcase, ChevronRight, TrendingUp, AlertTriangle,
-  CheckCircle2, XCircle, ArrowRight, User, GraduationCap, Code, Lightbulb,
-  ExternalLink, Sparkles, BookOpen, Save, Edit3, Star, MapPin
+  FileText, Upload, Briefcase, ChevronRight, TrendingUp,
+  CheckCircle2, XCircle, User, GraduationCap, Code, Lightbulb,
+  ExternalLink, Sparkles, BookOpen, Save, Edit3, Star
 } from 'lucide-react';
 
 function CandidateDashboard() {
@@ -23,7 +23,7 @@ function CandidateDashboard() {
   const [applyingJobId, setApplyingJobId] = useState(null);
   const [applyMessage, setApplyMessage] = useState({});
 
-  // Profile state
+  // Profile
   const [profileEdit, setProfileEdit] = useState(false);
   const [profile, setProfile] = useState({
     college: '', degree: '', cgpa: '', linkedin: '', leetcode: '',
@@ -34,509 +34,389 @@ function CandidateDashboard() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMsg, setProfileMsg] = useState('');
 
-  useEffect(() => {
-    fetchJobs();
-    fetchHistory();
-  }, []);
-
+  useEffect(() => { fetchJobs(); fetchHistory(); }, []);
   useEffect(() => {
     if (user?.profile) {
       setProfile({
-        college: user.profile.college || '',
-        degree: user.profile.degree || '',
-        cgpa: user.profile.cgpa || '',
-        linkedin: user.profile.linkedin || '',
-        leetcode: user.profile.leetcode || '',
-        skills: user.profile.skills || [],
+        college: user.profile.college || '', degree: user.profile.degree || '',
+        cgpa: user.profile.cgpa || '', linkedin: user.profile.linkedin || '',
+        leetcode: user.profile.leetcode || '', skills: user.profile.skills || [],
         projects: user.profile.projects || []
       });
     }
   }, [user]);
 
   const fetchJobs = async () => {
-    try {
-      const res = await API.get('/candidate/jobs');
-      setJobs(res.data.data);
-    } catch (err) { console.error('Error fetching jobs:', err); }
+    try { const r = await API.get('/candidate/jobs'); setJobs(r.data.data); } catch (e) { console.error(e); }
   };
-
   const fetchHistory = async () => {
-    try {
-      const res = await API.get('/candidate/history');
-      const reports = res.data.data || [];
-      setHistory(reports);
-      if (reports.length > 0 && !analysisResult) {
-        const r = reports[0];
-        setAnalysisResult({
-          scores: r.scores, keywords: r.keywords,
-          bulletImprovements: r.bulletImprovements, summary: r.summary,
-        });
-      }
-    } catch (err) { console.error('Error fetching history:', err); }
+    try { const r = await API.get('/candidate/history'); setHistory(r.data.data || []); } catch (e) { console.error(e); }
   };
 
   const handleAnalyze = async (e) => {
     e.preventDefault();
-    if (!file) { setError('Please select a PDF or DOCX resume file.'); return; }
-    setError(''); setLoading(true);
-
-    const formData = new FormData();
-    formData.append('resume', file);
-    if (selectedJobId) {
-      // Analyze against recruiter job
-      try {
-        const res = await API.post(`/candidate/analyze-job/${selectedJobId}`, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
-        setAnalysisResult(res.data);
-        setLoading(false);
-        fetchHistory();
-      } catch (err) {
-        setError(err.response?.data?.message || 'Analysis failed.');
-        setLoading(false);
+    if (!file) { setError('Please select a resume file.'); return; }
+    setError(''); setLoading(true); setAnalysisResult(null);
+    const fd = new FormData();
+    fd.append('resume', file);
+    try {
+      let res;
+      if (selectedJobId) {
+        res = await API.post(`/candidate/analyze-job/${selectedJobId}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      } else {
+        if (jobDescription) fd.append('jobDescription', jobDescription);
+        res = await API.post('/candidate/analyze', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       }
-    } else {
-      if (jobDescription) formData.append('jobDescription', jobDescription);
-      try {
-        const res = await API.post('/candidate/analyze', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
-        setAnalysisResult(res.data);
-        setLoading(false);
-        fetchHistory();
-      } catch (err) {
-        setError(err.response?.data?.message || 'Resume analysis failed.');
-        setLoading(false);
-      }
+      setAnalysisResult(res.data);
+      fetchHistory();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Analysis failed.');
     }
+    setLoading(false);
   };
 
   const handleExpressInterest = async (jobId) => {
     setApplyingJobId(jobId);
     try {
-      const res = await API.post(`/candidate/express-interest/${jobId}`);
-      setApplyMessage(prev => ({ ...prev, [jobId]: { type: 'success', text: res.data.message } }));
-      setApplyingJobId(null);
-      fetchHistory();
+      const r = await API.post(`/candidate/express-interest/${jobId}`);
+      setApplyMessage(p => ({ ...p, [jobId]: { ok: true, text: r.data.message } }));
     } catch (err) {
-      setApplyMessage(prev => ({
-        ...prev, [jobId]: { type: 'error', text: err.response?.data?.message || 'Failed' }
-      }));
-      setApplyingJobId(null);
+      setApplyMessage(p => ({ ...p, [jobId]: { ok: false, text: err.response?.data?.message || 'Failed' } }));
     }
+    setApplyingJobId(null);
   };
 
   const handleSaveProfile = async () => {
-    setProfileSaving(true);
-    setProfileMsg('');
+    setProfileSaving(true); setProfileMsg('');
     try {
-      const res = await API.put('/auth/profile', { profile });
-      updateUser(res.data.user);
-      setProfileMsg('Profile saved!');
-      setProfileEdit(false);
-      setProfileSaving(false);
-    } catch (err) {
-      setProfileMsg('Save failed');
-      setProfileSaving(false);
-    }
+      const r = await API.put('/auth/profile', { profile });
+      updateUser(r.data.user);
+      setProfileMsg('Profile saved!'); setProfileEdit(false);
+    } catch { setProfileMsg('Save failed'); }
+    setProfileSaving(false);
   };
 
   const addSkill = () => {
     if (newSkill.trim() && !profile.skills.includes(newSkill.trim())) {
-      setProfile(p => ({ ...p, skills: [...p.skills, newSkill.trim()] }));
-      setNewSkill('');
+      setProfile(p => ({ ...p, skills: [...p.skills, newSkill.trim()] })); setNewSkill('');
     }
   };
-
-  const removeSkill = (idx) => {
-    setProfile(p => ({ ...p, skills: p.skills.filter((_, i) => i !== idx) }));
-  };
-
+  const removeSkill = (i) => setProfile(p => ({ ...p, skills: p.skills.filter((_, idx) => idx !== i) }));
   const addProject = () => {
     if (newProject.name.trim()) {
       setProfile(p => ({ ...p, projects: [...p.projects, { ...newProject }] }));
       setNewProject({ name: '', description: '', techStack: '', link: '' });
     }
   };
+  const removeProject = (i) => setProfile(p => ({ ...p, projects: p.projects.filter((_, idx) => idx !== i) }));
 
-  const removeProject = (idx) => {
-    setProfile(p => ({ ...p, projects: p.projects.filter((_, i) => i !== idx) }));
-  };
+  const scoreColor = (s) => s >= 80 ? '#059669' : s >= 60 ? '#D97706' : '#DC2626';
+  const scoreTag = (s) => s >= 80 ? 'Excellent' : s >= 60 ? 'Good' : s >= 40 ? 'Fair' : 'Needs Work';
 
-  const getScoreColor = (score) => {
-    if (score >= 80) return 'var(--sl-success)';
-    if (score >= 60) return 'var(--sl-warning)';
-    return 'var(--sl-danger)';
-  };
-
-  const getScoreLabel = (score) => {
-    if (score >= 80) return 'Excellent';
-    if (score >= 60) return 'Good';
-    if (score >= 40) return 'Fair';
-    return 'Needs Work';
-  };
+  // Extract keywords safely from either response shape
+  const foundKw = analysisResult?.keywords?.foundKeywords || [];
+  const missingKw = analysisResult?.keywords?.missingKeywords || [];
+  const aiSuggestions = analysisResult?.aiSuggestions || [];
 
   const tabs = [
-    { id: 'analyze', label: 'Analyze Resume', icon: <Upload size={16} /> },
-    { id: 'jobs', label: `Job Board (${jobs.length})`, icon: <Briefcase size={16} /> },
-    { id: 'profile', label: 'My Profile', icon: <User size={16} /> },
+    { id: 'analyze', icon: <Upload size={15} />, label: 'Analyze' },
+    { id: 'jobs', icon: <Briefcase size={15} />, label: `Jobs (${jobs.length})` },
+    { id: 'profile', icon: <User size={15} />, label: 'Profile' },
   ];
 
   return (
-    <div style={s.container}>
-      {/* Welcome header */}
-      <header style={s.header}>
+    <div style={css.wrap}>
+      {/* Header */}
+      <div style={css.topBar}>
         <div>
-          <h1 style={s.title}>Welcome, {user?.name || 'Candidate'} 👋</h1>
-          <p style={s.subtitle}>Your AI-powered career dashboard</p>
+          <h1 style={css.greeting}>Hi, {user?.name?.split(' ')[0] || 'there'} 👋</h1>
+          <p style={css.greetSub}>Your AI career dashboard</p>
         </div>
-        <div style={s.headerStats}>
-          <div style={s.headerStat}>
-            <span style={s.headerStatNum}>{history.length}</span>
-            <span style={s.headerStatLabel}>Analyses</span>
-          </div>
-          <div style={s.headerStat}>
-            <span style={s.headerStatNum}>{jobs.length}</span>
-            <span style={s.headerStatLabel}>Open Jobs</span>
-          </div>
+        <div style={css.pills}>
+          <Pill label="Scans" value={history.length} />
+          <Pill label="Jobs" value={jobs.length} />
         </div>
-      </header>
+      </div>
 
       {/* Tabs */}
-      <div style={s.tabBar}>
+      <div style={css.tabRow}>
         {tabs.map(t => (
-          <button
-            key={t.id}
-            onClick={() => setActiveTab(t.id)}
-            style={{ ...s.tab, ...(activeTab === t.id ? s.tabActive : {}) }}
-          >
-            {t.icon} {t.label}
+          <button key={t.id} onClick={() => setActiveTab(t.id)}
+            style={{ ...css.tabBtn, ...(activeTab === t.id ? css.tabActive : {}) }}>
+            {t.icon}{t.label}
           </button>
         ))}
       </div>
 
-      {error && <div style={s.errorBox}>{error}</div>}
+      {error && <div style={css.alert}>{error}</div>}
 
-      {/* ANALYZE TAB */}
+      {/* ─── ANALYZE ─── */}
       {activeTab === 'analyze' && (
-        <div style={{ animation: 'fadeRiseIn 400ms ease-out both' }}>
+        <div style={{ animation: 'fadeRiseIn 350ms ease-out both' }}>
           <form onSubmit={handleAnalyze}>
-            <div style={s.uploadGrid}>
-              <div className="sl-card" style={{ flex: 1 }}>
-                <div style={s.cardHeader}>
-                  <FileText size={18} style={{ color: 'var(--sl-primary)' }} />
-                  <h3 style={s.cardTitle}>Job Description</h3>
-                </div>
-                {/* Recruiter job selector */}
+            <div style={css.twoCol}>
+              {/* Left: JD */}
+              <Card>
+                <CardHead icon={<FileText size={16} />} title="Target Job" />
                 {jobs.length > 0 && (
-                  <div style={{ marginBottom: '12px' }}>
-                    <label style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--sl-text-muted)', marginBottom: '4px', display: 'block' }}>
-                      Analyze against recruiter posting:
-                    </label>
-                    <select value={selectedJobId} onChange={(e) => setSelectedJobId(e.target.value)}>
-                      <option value="">Custom JD (type below)</option>
-                      {jobs.map(j => (
-                        <option key={j._id} value={j._id}>{j.title} — {j.company}</option>
-                      ))}
-                    </select>
+                  <select value={selectedJobId} onChange={e => setSelectedJobId(e.target.value)} style={{ marginBottom: 10 }}>
+                    <option value="">Custom JD (type below)</option>
+                    {jobs.map(j => <option key={j._id} value={j._id}>{j.title} — {j.company}</option>)}
+                  </select>
+                )}
+                {!selectedJobId ? (
+                  <textarea rows={5} value={jobDescription} onChange={e => setJobDescription(e.target.value)}
+                    placeholder="Paste a job description for targeted analysis…" style={{ resize: 'vertical', minHeight: 110 }} />
+                ) : (
+                  <div style={css.infoBox}>
+                    <Sparkles size={14} /> Analyzing against: <b>{jobs.find(j => j._id === selectedJobId)?.title}</b>
                   </div>
                 )}
-                {!selectedJobId && (
-                  <textarea
-                    rows={5}
-                    value={jobDescription}
-                    onChange={(e) => setJobDescription(e.target.value)}
-                    placeholder="Paste a custom job description for targeted analysis..."
-                    style={{ resize: 'vertical', minHeight: '120px' }}
-                  />
-                )}
-                {selectedJobId && (
-                  <div style={{ padding: '12px', background: 'var(--sl-primary-bg)', borderRadius: '10px', fontSize: '0.85rem', color: 'var(--sl-primary)' }}>
-                    <Sparkles size={14} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
-                    Will analyze against: <strong>{jobs.find(j => j._id === selectedJobId)?.title}</strong>
-                  </div>
-                )}
-              </div>
-
-              <div className="sl-card" style={{ flex: 1 }}>
-                <div style={s.cardHeader}>
-                  <Upload size={18} style={{ color: 'var(--sl-primary)' }} />
-                  <h3 style={s.cardTitle}>Upload Resume</h3>
-                </div>
-                <Dropzone onFileSelect={(f) => setFile(f)} label="Drop your resume here" />
-              </div>
+              </Card>
+              {/* Right: Upload */}
+              <Card>
+                <CardHead icon={<Upload size={16} />} title="Resume" />
+                <Dropzone onFileSelect={f => setFile(f)} label="Drop your resume here" />
+              </Card>
             </div>
-
-            <div style={{ textAlign: 'center', margin: '20px 0' }}>
-              <button type="submit" className="sl-btn-primary" disabled={loading} style={{ padding: '12px 36px', fontSize: '1rem' }}>
-                <Sparkles size={18} />
-                {loading ? 'Analyzing...' : 'Analyze Resume'}
+            <div style={{ textAlign: 'center', margin: '18px 0' }}>
+              <button type="submit" className="sl-btn-primary" disabled={loading}
+                style={{ padding: '12px 40px', fontSize: '0.95rem', gap: 8 }}>
+                <Sparkles size={16} />{loading ? 'Analyzing…' : 'Analyze Resume'}
               </button>
             </div>
           </form>
 
-          {/* Results */}
-          <div style={s.resultsGrid}>
-            <div style={{ flex: 1.3, display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {analysisResult ? (
-                <>
-                  {/* Job context */}
-                  {analysisResult.jobTitle && (
-                    <div className="sl-card" style={{ borderLeft: '4px solid var(--sl-primary)', padding: '14px 20px' }}>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--sl-text-muted)', marginBottom: '2px' }}>Analyzed against</div>
-                      <div style={{ fontWeight: 700, color: 'var(--sl-ink)' }}>{analysisResult.jobTitle} at {analysisResult.company}</div>
-                    </div>
-                  )}
+          {/* ─── Results ─── */}
+          {analysisResult ? (
+            <div style={css.resultsWrap}>
+              {/* Scores row */}
+              <div style={css.scoresRow}>
+                <ScoreCircle label="Overall" score={analysisResult.scores?.overallScore} large />
+                <ScoreCircle label="ATS" score={analysisResult.scores?.atsScore || 0} />
+                <ScoreCircle label="Job Match" score={analysisResult.scores?.jobMatchScore || 0} />
+              </div>
 
-                  {/* Scores */}
-                  <div className="sl-card">
-                    <h3 style={s.sectionTitle}><Star size={16} style={{ color: 'var(--sl-warning)' }} /> Score Summary</h3>
-                    <div style={s.scoreCardsRow}>
-                      <ScoreCard label="Overall" score={analysisResult.scores?.overallScore} getColor={getScoreColor} getLabel={getScoreLabel} large />
-                      <ScoreCard label="ATS Score" score={analysisResult.scores?.atsScore || analysisResult.scores?.formattingScore || 0} getColor={getScoreColor} getLabel={getScoreLabel} />
-                      <ScoreCard label="Job Match" score={analysisResult.scores?.jobMatchScore || analysisResult.scores?.keywordMatchScore || 0} getColor={getScoreColor} getLabel={getScoreLabel} />
-                    </div>
-                  </div>
-
-                  {/* Summary */}
-                  {analysisResult.summary && (
-                    <div className="sl-card" style={{ borderLeft: '4px solid var(--sl-primary)' }}>
-                      <h4 style={{ color: 'var(--sl-primary)', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px' }}>
-                        <Lightbulb size={14} style={{ verticalAlign: 'middle', marginRight: '6px' }} />
-                        AI Assessment
-                      </h4>
-                      <p style={{ color: 'var(--sl-text-muted)', fontSize: '0.88rem', lineHeight: 1.7 }}>{analysisResult.summary}</p>
-                    </div>
-                  )}
-
-                  {/* Matched Skills */}
-                  <div className="sl-card">
-                    <h3 style={s.sectionTitle}>Skills Analysis</h3>
-                    {analysisResult.keywords?.foundKeywords?.length > 0 && (
-                      <div style={{ marginBottom: '16px' }}>
-                        <h4 style={s.chipGroupTitle}><CheckCircle2 size={14} style={{ color: 'var(--sl-success)' }} /> Matched Skills ({analysisResult.keywords.foundKeywords.length})</h4>
-                        <div style={s.chipGrid}>
-                          {analysisResult.keywords.foundKeywords.map((sk, i) => (
-                            <span key={i} className="sl-badge sl-badge-success">{sk}</span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {analysisResult.keywords?.missingKeywords?.length > 0 && (
-                      <div>
-                        <h4 style={s.chipGroupTitle}><XCircle size={14} style={{ color: 'var(--sl-danger)' }} /> Missing Skills ({analysisResult.keywords.missingKeywords.length})</h4>
-                        <div style={s.chipGrid}>
-                          {analysisResult.keywords.missingKeywords.map((sk, i) => (
-                            <span key={i} className="sl-badge sl-badge-danger">{sk}</span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* AI Suggestions */}
-                  {analysisResult.aiSuggestions?.length > 0 && (
-                    <div className="sl-card" style={{ border: '1px solid var(--sl-primary-soft)' }}>
-                      <h3 style={s.sectionTitle}><Sparkles size={16} style={{ color: 'var(--sl-primary)' }} /> AI Suggestions to Improve</h3>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        {analysisResult.aiSuggestions.map((sug, i) => (
-                          <div key={i} style={s.suggestionItem}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                              <span className={`sl-badge ${sug.priority === 'high' ? 'sl-badge-danger' : 'sl-badge-warning'}`}>{sug.priority}</span>
-                              <strong style={{ fontSize: '0.85rem', color: 'var(--sl-ink)' }}>Learn {sug.skill}</strong>
-                            </div>
-                            <p style={{ fontSize: '0.82rem', color: 'var(--sl-text-muted)', margin: '0 0 6px 0' }}>{sug.suggestion}</p>
-                            <div style={{ fontSize: '0.78rem', color: 'var(--sl-primary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <BookOpen size={12} /> {sug.resources}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Improvements */}
-                  {analysisResult.improvements?.length > 0 && (
-                    <div className="sl-card">
-                      <h3 style={s.sectionTitle}><TrendingUp size={16} style={{ color: 'var(--sl-warning)' }} /> Improvement Tips</h3>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {analysisResult.improvements.map((imp, i) => (
-                          <div key={i} style={s.improvementItem}>
-                            <span className={`sl-badge ${imp.priority === 'high' ? 'sl-badge-danger' : imp.priority === 'medium' ? 'sl-badge-warning' : 'sl-badge-primary'}`}>{imp.priority}</span>
-                            <strong style={{ fontSize: '0.85rem', color: 'var(--sl-ink)' }}>{imp.area}</strong>
-                            <p style={{ fontSize: '0.82rem', color: 'var(--sl-text-muted)', margin: 0 }}>{imp.suggestion}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="sl-card" style={{ textAlign: 'center', padding: '50px 20px' }}>
-                  <Upload size={40} style={{ color: 'var(--sl-text-subtle)', marginBottom: '12px' }} />
-                  <h3 style={{ color: 'var(--sl-ink)', fontSize: '1.1rem', marginBottom: '6px' }}>No Analysis Yet</h3>
-                  <p style={{ color: 'var(--sl-text-muted)', fontSize: '0.88rem' }}>Upload your resume above to get your ATS score and AI-powered analysis.</p>
+              {/* Job context */}
+              {analysisResult.jobTitle && (
+                <div style={{ ...css.card, borderLeft: '4px solid var(--sl-primary)', padding: '12px 18px', marginBottom: 14 }}>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--sl-text-muted)' }}>Analyzed against </span>
+                  <b style={{ color: 'var(--sl-ink)' }}>{analysisResult.jobTitle}</b>
+                  <span style={{ color: 'var(--sl-text-muted)' }}> at {analysisResult.company}</span>
                 </div>
               )}
-            </div>
 
-            {/* Right sidebar */}
-            <div style={{ flex: 0.8, display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {history.length > 0 && (
-                <div className="sl-card">
-                  <h3 style={s.sectionTitle}>Recent Analyses</h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    {history.slice(0, 5).map((rep, i) => (
-                      <div key={rep._id || i} style={s.historyItem}>
-                        <div style={{ flex: 1, overflow: 'hidden' }}>
-                          <span style={{ fontSize: '0.82rem', fontWeight: 500, color: 'var(--sl-ink)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {rep.resumeId?.fileName || `Analysis #${i + 1}`}
-                          </span>
-                          <span style={{ fontSize: '0.7rem', color: 'var(--sl-text-subtle)' }}>
-                            {rep.createdAt ? new Date(rep.createdAt).toLocaleDateString() : ''}
-                          </span>
+              {/* Summary */}
+              {analysisResult.summary && (
+                <div style={{ ...css.card, borderLeft: '4px solid var(--sl-primary)', marginBottom: 14 }}>
+                  <h4 style={css.miniHead}><Lightbulb size={14} /> AI Assessment</h4>
+                  <p style={{ color: 'var(--sl-text-muted)', fontSize: '0.86rem', lineHeight: 1.7, margin: 0 }}>{analysisResult.summary}</p>
+                </div>
+              )}
+
+              {/* Skills grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+                {/* Matched */}
+                <div style={css.card}>
+                  <h4 style={{ ...css.miniHead, color: '#059669' }}><CheckCircle2 size={14} /> Matched Skills ({foundKw.length})</h4>
+                  <div style={css.chipWrap}>
+                    {foundKw.length > 0 ? foundKw.map((s, i) => (
+                      <span key={i} style={css.chipGreen}>{s}</span>
+                    )) : <span style={css.emptyNote}>No skills matched</span>}
+                  </div>
+                </div>
+                {/* Missing */}
+                <div style={css.card}>
+                  <h4 style={{ ...css.miniHead, color: '#DC2626' }}><XCircle size={14} /> Missing Skills ({missingKw.length})</h4>
+                  <div style={css.chipWrap}>
+                    {missingKw.length > 0 ? missingKw.map((s, i) => (
+                      <span key={i} style={css.chipRed}>{s}</span>
+                    )) : <span style={css.emptyNote}>None — great match!</span>}
+                  </div>
+                </div>
+              </div>
+
+              {/* AI Suggestions */}
+              {aiSuggestions.length > 0 && (
+                <div style={{ ...css.card, border: '1px solid var(--sl-primary-soft)', marginBottom: 14 }}>
+                  <h4 style={css.miniHead}><Sparkles size={14} style={{ color: 'var(--sl-primary)' }} /> AI Suggestions to Improve</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {aiSuggestions.map((sg, i) => (
+                      <div key={i} style={css.sugCard}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                          <span style={sg.priority === 'high' ? css.badgeDanger : css.badgeWarn}>{sg.priority}</span>
+                          <b style={{ fontSize: '0.85rem', color: 'var(--sl-ink)' }}>Learn {sg.skill}</b>
                         </div>
-                        <span className="sl-badge sl-badge-primary sl-tabular">{rep.scores?.overallScore || 0}%</span>
+                        <p style={{ fontSize: '0.82rem', color: 'var(--sl-text-muted)', margin: '0 0 4px' }}>{sg.suggestion}</p>
+                        <div style={{ fontSize: '0.76rem', color: 'var(--sl-primary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <BookOpen size={11} /> {sg.resources}
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* JOBS TAB */}
-      {activeTab === 'jobs' && (
-        <div style={{ animation: 'fadeRiseIn 400ms ease-out both' }}>
-          {jobs.length > 0 ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '16px' }}>
-              {jobs.map((job) => (
-                <div key={job._id} className="sl-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                      <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--sl-ink)', marginBottom: '2px' }}>{job.title}</h4>
-                      <p style={{ fontSize: '0.85rem', color: 'var(--sl-primary)', fontWeight: 600 }}>{job.company}</p>
+              {/* Improvements */}
+              {analysisResult.improvements?.length > 0 && (
+                <div style={{ ...css.card, marginBottom: 14 }}>
+                  <h4 style={css.miniHead}><TrendingUp size={14} style={{ color: 'var(--sl-warning)' }} /> Improvement Tips</h4>
+                  {analysisResult.improvements.map((imp, i) => (
+                    <div key={i} style={{ padding: '10px 12px', background: 'var(--sl-bg-gray-50)', borderRadius: 8, marginBottom: 6 }}>
+                      <span style={imp.priority === 'high' ? css.badgeDanger : css.badgeWarn}>{imp.priority}</span>
+                      <b style={{ fontSize: '0.85rem', color: 'var(--sl-ink)', marginLeft: 6 }}>{imp.area}</b>
+                      <p style={{ fontSize: '0.82rem', color: 'var(--sl-text-muted)', margin: '2px 0 0' }}>{imp.suggestion}</p>
                     </div>
-                    <span className="sl-badge sl-badge-success">Open</span>
-                  </div>
-                  <p style={{ fontSize: '0.82rem', color: 'var(--sl-text-muted)', lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                    {job.descriptionText}
-                  </p>
-                  {job.extractedSkills?.length > 0 && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                      {job.extractedSkills.slice(0, 5).map((sk, i) => (
-                        <span key={i} className="sl-badge sl-badge-primary" style={{ fontSize: '10px' }}>{sk}</span>
-                      ))}
-                      {job.extractedSkills.length > 5 && (
-                        <span style={{ fontSize: '10px', color: 'var(--sl-text-subtle)' }}>+{job.extractedSkills.length - 5} more</span>
-                      )}
-                    </div>
-                  )}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: 'auto', paddingTop: '8px', borderTop: '1px solid var(--sl-border-light)' }}>
-                    <button
-                      onClick={() => handleExpressInterest(job._id)}
-                      disabled={applyingJobId === job._id}
-                      className="sl-btn-primary"
-                      style={{ padding: '8px 16px', fontSize: '0.82rem', flex: 1 }}
-                    >
-                      {applyingJobId === job._id ? 'Applying...' : 'Express Interest'}
-                      <ChevronRight size={14} />
-                    </button>
-                    {applyMessage[job._id] && (
-                      <span style={{ fontSize: '0.75rem', color: applyMessage[job._id].type === 'error' ? 'var(--sl-danger)' : 'var(--sl-success-text)' }}>
-                        {applyMessage[job._id].text}
-                      </span>
-                    )}
-                  </div>
+                  ))}
                 </div>
-              ))}
+              )}
+
+              {/* History sidebar */}
+              {history.length > 0 && (
+                <div style={css.card}>
+                  <h4 style={css.miniHead}>Recent Scans</h4>
+                  {history.slice(0, 5).map((h, i) => (
+                    <div key={h._id || i} style={css.histRow}>
+                      <span style={{ flex: 1, fontSize: '0.82rem', fontWeight: 500, color: 'var(--sl-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {h.resumeId?.fileName || `Scan #${i + 1}`}
+                      </span>
+                      <span style={css.scorePill}>{h.scores?.overallScore || 0}%</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="sl-card" style={{ textAlign: 'center', padding: '60px 20px' }}>
-              <Briefcase size={40} style={{ color: 'var(--sl-text-subtle)', marginBottom: '12px' }} />
-              <h3 style={{ color: 'var(--sl-ink)' }}>No Open Positions</h3>
-              <p style={{ color: 'var(--sl-text-muted)', fontSize: '0.9rem' }}>Check back later for new job postings from recruiters.</p>
+          ) : !loading && (
+            <div style={{ ...css.card, textAlign: 'center', padding: '50px 20px' }}>
+              <Upload size={36} style={{ color: 'var(--sl-text-subtle)', marginBottom: 10 }} />
+              <h3 style={{ color: 'var(--sl-ink)', fontSize: '1.05rem', marginBottom: 4 }}>Upload & Analyze</h3>
+              <p style={{ color: 'var(--sl-text-muted)', fontSize: '0.88rem' }}>Drop your resume above and get instant AI-powered feedback.</p>
+            </div>
+          )}
+
+          {loading && (
+            <div style={{ ...css.card, textAlign: 'center', padding: '50px 20px' }}>
+              <div style={css.spinner} />
+              <p style={{ color: 'var(--sl-text-muted)', marginTop: 14 }}>Analyzing your resume with AI…</p>
             </div>
           )}
         </div>
       )}
 
-      {/* PROFILE TAB */}
+      {/* ─── JOBS ─── */}
+      {activeTab === 'jobs' && (
+        <div style={{ animation: 'fadeRiseIn 350ms ease-out both' }}>
+          {jobs.length > 0 ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(320px,1fr))', gap: 14 }}>
+              {jobs.map(job => (
+                <div key={job._id} style={{ ...css.card, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <div>
+                      <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--sl-ink)', margin: 0 }}>{job.title}</h4>
+                      <p style={{ fontSize: '0.82rem', color: 'var(--sl-primary)', fontWeight: 600, margin: 0 }}>{job.company}</p>
+                    </div>
+                    <span style={css.badgeGreen}>Open</span>
+                  </div>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--sl-text-muted)', lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', margin: 0 }}>
+                    {job.descriptionText}
+                  </p>
+                  {job.extractedSkills?.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                      {job.extractedSkills.slice(0, 6).map((sk, i) => (
+                        <span key={i} style={css.chipBlue}>{sk}</span>
+                      ))}
+                      {job.extractedSkills.length > 6 && <span style={{ fontSize: '0.7rem', color: 'var(--sl-text-subtle)' }}>+{job.extractedSkills.length - 6}</span>}
+                    </div>
+                  )}
+                  <div style={{ marginTop: 'auto', paddingTop: 8, borderTop: '1px solid var(--sl-border-light)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <button onClick={() => handleExpressInterest(job._id)} disabled={applyingJobId === job._id}
+                      className="sl-btn-primary" style={{ flex: 1, padding: '8px 14px', fontSize: '0.82rem' }}>
+                      {applyingJobId === job._id ? 'Applying…' : 'Express Interest'} <ChevronRight size={13} />
+                    </button>
+                  </div>
+                  {applyMessage[job._id] && (
+                    <div style={{ fontSize: '0.75rem', textAlign: 'center', color: applyMessage[job._id].ok ? '#059669' : '#DC2626' }}>
+                      {applyMessage[job._id].text}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ ...css.card, textAlign: 'center', padding: '50px' }}>
+              <Briefcase size={36} style={{ color: 'var(--sl-text-subtle)' }} />
+              <h3 style={{ color: 'var(--sl-ink)', marginTop: 10 }}>No Open Positions</h3>
+              <p style={{ color: 'var(--sl-text-muted)', fontSize: '0.88rem' }}>Check back later for new openings.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ─── PROFILE ─── */}
       {activeTab === 'profile' && (
-        <div style={{ maxWidth: '800px', margin: '0 auto', animation: 'fadeRiseIn 400ms ease-out both' }}>
-          <div className="sl-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={s.sectionTitle}><User size={18} /> My Profile</h3>
-              <button onClick={() => profileEdit ? handleSaveProfile() : setProfileEdit(true)} className={profileEdit ? 'sl-btn-primary' : 'sl-btn-secondary'} disabled={profileSaving} style={{ padding: '8px 16px', fontSize: '0.85rem' }}>
-                {profileEdit ? (profileSaving ? 'Saving...' : <><Save size={14} /> Save Profile</>) : <><Edit3 size={14} /> Edit Profile</>}
+        <div style={{ maxWidth: 780, margin: '0 auto', animation: 'fadeRiseIn 350ms ease-out both' }}>
+          <div style={css.card}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+              <h3 style={css.miniHead}><User size={16} /> My Profile</h3>
+              <button onClick={() => profileEdit ? handleSaveProfile() : setProfileEdit(true)}
+                className={profileEdit ? 'sl-btn-primary' : 'sl-btn-secondary'}
+                disabled={profileSaving} style={{ padding: '7px 16px', fontSize: '0.82rem' }}>
+                {profileEdit ? (profileSaving ? 'Saving…' : <><Save size={13} /> Save</>) : <><Edit3 size={13} /> Edit</>}
               </button>
             </div>
 
-            {profileMsg && <div style={{ padding: '8px 14px', background: profileMsg === 'Profile saved!' ? 'var(--sl-success-light)' : 'var(--sl-danger-light)', borderRadius: '8px', marginBottom: '16px', fontSize: '0.85rem', color: profileMsg === 'Profile saved!' ? 'var(--sl-success-text)' : 'var(--sl-danger-text)' }}>{profileMsg}</div>}
+            {profileMsg && <div style={{ padding: '8px 12px', background: profileMsg === 'Profile saved!' ? '#D1FAE5' : '#FEE2E2', borderRadius: 8, marginBottom: 14, fontSize: '0.82rem', color: profileMsg === 'Profile saved!' ? '#065F46' : '#991B1B' }}>{profileMsg}</div>}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-              <div>
-                <label style={s.fieldLabel}><GraduationCap size={14} /> College / University</label>
-                <input value={profile.college} onChange={e => setProfile(p => ({ ...p, college: e.target.value }))} disabled={!profileEdit} placeholder="e.g. IIT Delhi" />
-              </div>
-              <div>
-                <label style={s.fieldLabel}>Degree</label>
-                <input value={profile.degree} onChange={e => setProfile(p => ({ ...p, degree: e.target.value }))} disabled={!profileEdit} placeholder="e.g. B.Tech Computer Science" />
-              </div>
-              <div>
-                <label style={s.fieldLabel}>CGPA</label>
-                <input value={profile.cgpa} onChange={e => setProfile(p => ({ ...p, cgpa: e.target.value }))} disabled={!profileEdit} placeholder="e.g. 8.5" />
-              </div>
-              <div>
-                <label style={s.fieldLabel}><ExternalLink size={14} /> LinkedIn</label>
-                <input value={profile.linkedin} onChange={e => setProfile(p => ({ ...p, linkedin: e.target.value }))} disabled={!profileEdit} placeholder="https://linkedin.com/in/..." />
-              </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={s.fieldLabel}><Code size={14} /> LeetCode Profile</label>
-                <input value={profile.leetcode} onChange={e => setProfile(p => ({ ...p, leetcode: e.target.value }))} disabled={!profileEdit} placeholder="https://leetcode.com/..." />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <Field icon={<GraduationCap size={13} />} label="College" val={profile.college} set={v => setProfile(p => ({ ...p, college: v }))} edit={profileEdit} ph="e.g. IIT Delhi" />
+              <Field label="Degree" val={profile.degree} set={v => setProfile(p => ({ ...p, degree: v }))} edit={profileEdit} ph="e.g. B.Tech CS" />
+              <Field label="CGPA" val={profile.cgpa} set={v => setProfile(p => ({ ...p, cgpa: v }))} edit={profileEdit} ph="e.g. 8.5" />
+              <Field icon={<ExternalLink size={13} />} label="LinkedIn" val={profile.linkedin} set={v => setProfile(p => ({ ...p, linkedin: v }))} edit={profileEdit} ph="https://linkedin.com/in/…" />
+              <div style={{ gridColumn: '1/-1' }}>
+                <Field icon={<Code size={13} />} label="LeetCode" val={profile.leetcode} set={v => setProfile(p => ({ ...p, leetcode: v }))} edit={profileEdit} ph="https://leetcode.com/…" />
               </div>
             </div>
 
             {/* Skills */}
-            <div style={{ marginTop: '20px' }}>
-              <label style={s.fieldLabel}>Skills</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+            <div style={{ marginTop: 18 }}>
+              <label style={css.fieldLbl}>Skills</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
                 {profile.skills.map((sk, i) => (
-                  <span key={i} className="sl-badge sl-badge-primary" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span key={i} style={{ ...css.chipBlue, display: 'flex', alignItems: 'center', gap: 4 }}>
                     {sk}
-                    {profileEdit && <button onClick={() => removeSkill(i)} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, fontSize: '14px', lineHeight: 1 }}>×</button>}
+                    {profileEdit && <button onClick={() => removeSkill(i)} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, lineHeight: 1, fontSize: 14 }}>×</button>}
                   </span>
                 ))}
+                {profile.skills.length === 0 && <span style={css.emptyNote}>No skills added yet</span>}
               </div>
               {profileEdit && (
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input value={newSkill} onChange={e => setNewSkill(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addSkill())} placeholder="Add a skill..." style={{ flex: 1 }} />
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input value={newSkill} onChange={e => setNewSkill(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addSkill())} placeholder="Add skill…" style={{ flex: 1 }} />
                   <button type="button" onClick={addSkill} className="sl-btn-secondary" style={{ padding: '8px 14px' }}>Add</button>
                 </div>
               )}
             </div>
 
             {/* Projects */}
-            <div style={{ marginTop: '20px' }}>
-              <label style={s.fieldLabel}>Projects</label>
+            <div style={{ marginTop: 18 }}>
+              <label style={css.fieldLbl}>Projects</label>
               {profile.projects.map((proj, i) => (
-                <div key={i} style={{ padding: '12px', background: 'var(--sl-bg-gray-50)', borderRadius: '10px', marginBottom: '8px', position: 'relative' }}>
-                  <strong style={{ fontSize: '0.9rem', color: 'var(--sl-ink)' }}>{proj.name}</strong>
-                  <p style={{ fontSize: '0.82rem', color: 'var(--sl-text-muted)', margin: '2px 0' }}>{proj.description}</p>
-                  {proj.techStack && <div style={{ fontSize: '0.78rem', color: 'var(--sl-primary)' }}>Tech: {proj.techStack}</div>}
-                  {proj.link && <a href={proj.link} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.78rem' }}>{proj.link}</a>}
-                  {profileEdit && <button onClick={() => removeProject(i)} style={{ position: 'absolute', top: '8px', right: '8px', background: 'none', border: 'none', color: 'var(--sl-danger)', cursor: 'pointer', fontSize: '16px' }}>×</button>}
+                <div key={i} style={{ padding: 12, background: 'var(--sl-bg-gray-50)', borderRadius: 10, marginBottom: 8, position: 'relative' }}>
+                  <b style={{ fontSize: '0.88rem', color: 'var(--sl-ink)' }}>{proj.name}</b>
+                  {proj.techStack && <span style={{ fontSize: '0.75rem', color: 'var(--sl-primary)', marginLeft: 8 }}>({proj.techStack})</span>}
+                  {proj.description && <p style={{ fontSize: '0.8rem', color: 'var(--sl-text-muted)', margin: '3px 0 0' }}>{proj.description}</p>}
+                  {proj.link && <a href={proj.link} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.75rem' }}>{proj.link}</a>}
+                  {profileEdit && <button onClick={() => removeProject(i)} style={{ position: 'absolute', top: 6, right: 8, background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: 18 }}>×</button>}
                 </div>
               ))}
               {profileEdit && (
-                <div style={{ padding: '14px', background: 'var(--sl-bg-gray-50)', borderRadius: '10px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <div style={{ padding: 14, background: 'var(--sl-bg-gray-50)', borderRadius: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                   <input value={newProject.name} onChange={e => setNewProject(p => ({ ...p, name: e.target.value }))} placeholder="Project name" />
                   <input value={newProject.techStack} onChange={e => setNewProject(p => ({ ...p, techStack: e.target.value }))} placeholder="Tech stack" />
-                  <input value={newProject.description} onChange={e => setNewProject(p => ({ ...p, description: e.target.value }))} placeholder="Brief description" style={{ gridColumn: '1 / -1' }} />
-                  <input value={newProject.link} onChange={e => setNewProject(p => ({ ...p, link: e.target.value }))} placeholder="Project link (optional)" />
-                  <button type="button" onClick={addProject} className="sl-btn-primary" style={{ padding: '8px' }}>Add Project</button>
+                  <input value={newProject.description} onChange={e => setNewProject(p => ({ ...p, description: e.target.value }))} placeholder="Brief description" style={{ gridColumn: '1/-1' }} />
+                  <input value={newProject.link} onChange={e => setNewProject(p => ({ ...p, link: e.target.value }))} placeholder="Link (optional)" />
+                  <button type="button" onClick={addProject} className="sl-btn-primary" style={{ padding: 8 }}>Add Project</button>
                 </div>
               )}
             </div>
@@ -547,49 +427,81 @@ function CandidateDashboard() {
   );
 }
 
-function ScoreCard({ label, score, getColor, getLabel, large }) {
-  const sc = score || 0;
-  const circ = 2 * Math.PI * 40;
-  const dash = (sc / 100) * circ;
+/* ── Tiny subcomponents ── */
+function Card({ children, style }) {
+  return <div style={{ background: '#fff', border: '1px solid var(--sl-border-color)', borderRadius: 16, padding: 20, boxShadow: '0 1px 3px rgba(0,0,0,.04)', ...style }}>{children}</div>;
+}
+function CardHead({ icon, title }) {
+  return <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 12 }}>
+    <span style={{ color: 'var(--sl-primary)' }}>{icon}</span>
+    <h3 style={{ fontSize: '0.92rem', fontWeight: 600, color: 'var(--sl-ink)', margin: 0 }}>{title}</h3>
+  </div>;
+}
+function Pill({ label, value }) {
+  return <div style={{ textAlign: 'center', padding: '6px 16px', background: '#fff', borderRadius: 12, border: '1px solid var(--sl-border-color)' }}>
+    <span style={{ display: 'block', fontSize: '1.2rem', fontWeight: 800, color: 'var(--sl-primary)' }}>{value}</span>
+    <span style={{ fontSize: '0.68rem', color: 'var(--sl-text-muted)' }}>{label}</span>
+  </div>;
+}
+function ScoreCircle({ label, score, large }) {
+  const s = score || 0;
+  const c = 2 * Math.PI * 38;
+  const d = (s / 100) * c;
+  const col = s >= 80 ? '#059669' : s >= 60 ? '#D97706' : '#DC2626';
+  const tag = s >= 80 ? 'Excellent' : s >= 60 ? 'Good' : s >= 40 ? 'Fair' : 'Needs Work';
   return (
-    <div style={{ textAlign: 'center', flex: large ? 1.2 : 1 }}>
-      <svg viewBox="0 0 100 100" width={large ? 100 : 76} height={large ? 100 : 76}>
-        <circle cx="50" cy="50" r="40" fill="none" stroke="var(--sl-bg-gray-200)" strokeWidth="6" />
-        <circle cx="50" cy="50" r="40" fill="none" stroke={getColor(sc)} strokeWidth="6" strokeLinecap="round" strokeDasharray={`${dash} ${circ - dash}`} transform="rotate(-90 50 50)" style={{ transition: 'stroke-dasharray 600ms ease' }} />
-        <text x="50" y="47" textAnchor="middle" style={{ fontSize: large ? '22px' : '18px', fontWeight: 800, fill: 'var(--sl-ink)', fontFamily: 'var(--sl-font-family)' }}>{sc}</text>
-        <text x="50" y="62" textAnchor="middle" style={{ fontSize: '9px', fill: 'var(--sl-text-subtle)', fontFamily: 'var(--sl-font-family)' }}>/ 100</text>
+    <div style={{ textAlign: 'center' }}>
+      <svg viewBox="0 0 92 92" width={large ? 100 : 78} height={large ? 100 : 78}>
+        <circle cx="46" cy="46" r="38" fill="none" stroke="#E2E8F0" strokeWidth="5" />
+        <circle cx="46" cy="46" r="38" fill="none" stroke={col} strokeWidth="5" strokeLinecap="round"
+          strokeDasharray={`${d} ${c - d}`} transform="rotate(-90 46 46)" style={{ transition: 'stroke-dasharray .6s ease' }} />
+        <text x="46" y="43" textAnchor="middle" style={{ fontSize: large ? '20px' : '17px', fontWeight: 800, fill: '#0F172A', fontFamily: 'Inter,sans-serif' }}>{s}</text>
+        <text x="46" y="57" textAnchor="middle" style={{ fontSize: '8px', fill: '#94A3B8', fontFamily: 'Inter,sans-serif' }}>/ 100</text>
       </svg>
-      <div style={{ fontSize: '0.72rem', fontWeight: 600, color: getColor(sc), marginTop: '4px' }}>{getLabel(sc)}</div>
-      <div style={{ fontSize: '0.7rem', color: 'var(--sl-text-muted)', marginTop: '2px' }}>{label}</div>
+      <div style={{ fontSize: '0.7rem', fontWeight: 700, color: col }}>{tag}</div>
+      <div style={{ fontSize: '0.68rem', color: '#64748B', marginTop: 1 }}>{label}</div>
+    </div>
+  );
+}
+function Field({ icon, label, val, set, edit, ph }) {
+  return (
+    <div>
+      <label style={{ ...css.fieldLbl, display: 'flex', alignItems: 'center', gap: 5 }}>{icon}{label}</label>
+      <input value={val} onChange={e => set(e.target.value)} disabled={!edit} placeholder={ph} />
     </div>
   );
 }
 
-const s = {
-  container: { padding: '24px 20px', maxWidth: '1320px', margin: '0 auto' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' },
-  title: { fontSize: '1.6rem', color: 'var(--sl-ink)', fontWeight: 800, letterSpacing: '-0.02em' },
-  subtitle: { color: 'var(--sl-text-muted)', fontSize: '0.9rem', marginTop: '2px' },
-  headerStats: { display: 'flex', gap: '20px' },
-  headerStat: { textAlign: 'center', padding: '8px 16px', background: 'var(--sl-bg-white)', borderRadius: '12px', border: '1px solid var(--sl-border-color)' },
-  headerStatNum: { display: 'block', fontSize: '1.3rem', fontWeight: 800, color: 'var(--sl-primary)' },
-  headerStatLabel: { fontSize: '0.7rem', color: 'var(--sl-text-muted)', fontWeight: 500 },
-  tabBar: { display: 'flex', gap: '4px', marginBottom: '20px', background: 'var(--sl-bg-white)', padding: '4px', borderRadius: '12px', border: '1px solid var(--sl-border-color)', width: 'fit-content' },
-  tab: { display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 500, color: 'var(--sl-text-muted)', cursor: 'pointer', background: 'transparent', border: 'none', transition: 'all 150ms ease' },
-  tabActive: { background: 'var(--sl-primary)', color: '#fff', boxShadow: '0 2px 6px rgba(37,99,235,0.3)' },
-  errorBox: { background: 'var(--sl-danger-light)', color: 'var(--sl-danger-text)', padding: '12px', borderRadius: '10px', textAlign: 'center', marginBottom: '16px', fontSize: '0.88rem' },
-  uploadGrid: { display: 'flex', gap: '16px', flexWrap: 'wrap' },
-  cardHeader: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' },
-  cardTitle: { fontSize: '0.95rem', fontWeight: 600, color: 'var(--sl-ink)', margin: 0 },
-  resultsGrid: { display: 'flex', gap: '16px', flexWrap: 'wrap' },
-  sectionTitle: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.95rem', fontWeight: 700, color: 'var(--sl-ink)', marginBottom: '14px' },
-  scoreCardsRow: { display: 'flex', justifyContent: 'space-around', alignItems: 'center', flexWrap: 'wrap', gap: '12px' },
-  chipGroupTitle: { display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', fontWeight: 600, color: 'var(--sl-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' },
-  chipGrid: { display: 'flex', flexWrap: 'wrap', gap: '6px' },
-  suggestionItem: { padding: '14px', background: 'var(--sl-primary-bg)', borderRadius: '10px', borderLeft: '3px solid var(--sl-primary)' },
-  improvementItem: { padding: '12px', background: 'var(--sl-bg-gray-50)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '4px' },
-  historyItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderRadius: '8px', background: 'var(--sl-bg-gray-50)', gap: '8px' },
-  fieldLabel: { display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', fontWeight: 500, color: 'var(--sl-ink)', marginBottom: '6px' },
+/* ── Styles ── */
+const css = {
+  wrap: { padding: '22px 20px', maxWidth: 1300, margin: '0 auto' },
+  topBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 14 },
+  greeting: { fontSize: '1.5rem', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.02em', margin: 0 },
+  greetSub: { color: '#64748B', fontSize: '0.88rem', margin: 0 },
+  pills: { display: 'flex', gap: 14 },
+  tabRow: { display: 'flex', gap: 4, marginBottom: 18, background: '#fff', padding: 4, borderRadius: 12, border: '1px solid #E2E8F0', width: 'fit-content' },
+  tabBtn: { display: 'flex', alignItems: 'center', gap: 5, padding: '8px 15px', borderRadius: 8, fontSize: '0.84rem', fontWeight: 500, color: '#64748B', cursor: 'pointer', background: 'transparent', border: 'none', transition: 'all 150ms ease' },
+  tabActive: { background: '#2563EB', color: '#fff', boxShadow: '0 2px 6px rgba(37,99,235,.3)' },
+  alert: { background: '#FEE2E2', color: '#991B1B', padding: '10px 14px', borderRadius: 10, textAlign: 'center', marginBottom: 14, fontSize: '0.86rem' },
+  twoCol: { display: 'flex', gap: 14, flexWrap: 'wrap' },
+  infoBox: { padding: '10px 14px', background: '#EFF6FF', borderRadius: 10, fontSize: '0.84rem', color: '#2563EB', display: 'flex', alignItems: 'center', gap: 6 },
+  card: { background: '#fff', border: '1px solid #E2E8F0', borderRadius: 16, padding: 20, boxShadow: '0 1px 3px rgba(0,0,0,.04)' },
+  miniHead: { display: 'flex', alignItems: 'center', gap: 7, fontSize: '0.88rem', fontWeight: 700, color: '#0F172A', margin: '0 0 10px' },
+  resultsWrap: { display: 'flex', flexDirection: 'column', gap: 0 },
+  scoresRow: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 24, padding: '18px 0 22px', flexWrap: 'wrap' },
+  chipWrap: { display: 'flex', flexWrap: 'wrap', gap: 6 },
+  chipGreen: { display: 'inline-flex', padding: '3px 10px', borderRadius: 999, fontSize: '0.72rem', fontWeight: 600, background: '#D1FAE5', color: '#065F46' },
+  chipRed: { display: 'inline-flex', padding: '3px 10px', borderRadius: 999, fontSize: '0.72rem', fontWeight: 600, background: '#FEE2E2', color: '#991B1B' },
+  chipBlue: { display: 'inline-flex', padding: '3px 10px', borderRadius: 999, fontSize: '0.72rem', fontWeight: 600, background: '#DBEAFE', color: '#2563EB' },
+  sugCard: { padding: '12px 14px', background: '#EFF6FF', borderRadius: 10, borderLeft: '3px solid #2563EB' },
+  badgeDanger: { display: 'inline-flex', padding: '2px 8px', borderRadius: 999, fontSize: '0.65rem', fontWeight: 700, background: '#FEE2E2', color: '#991B1B' },
+  badgeWarn: { display: 'inline-flex', padding: '2px 8px', borderRadius: 999, fontSize: '0.65rem', fontWeight: 700, background: '#FEF3C7', color: '#92400E' },
+  badgeGreen: { display: 'inline-flex', padding: '3px 10px', borderRadius: 999, fontSize: '0.68rem', fontWeight: 600, background: '#D1FAE5', color: '#065F46' },
+  histRow: { display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, background: '#F7F9FC', marginBottom: 5 },
+  scorePill: { padding: '2px 10px', borderRadius: 999, fontSize: '0.72rem', fontWeight: 700, background: '#DBEAFE', color: '#2563EB' },
+  emptyNote: { fontSize: '0.8rem', color: '#94A3B8', fontStyle: 'italic' },
+  fieldLbl: { fontSize: '0.8rem', fontWeight: 500, color: '#0F172A', marginBottom: 5, display: 'block' },
+  spinner: { width: 32, height: 32, border: '3px solid #E2E8F0', borderTopColor: '#2563EB', borderRadius: '50%', animation: 'spin .6s linear infinite', margin: '0 auto' },
 };
 
 export default CandidateDashboard;

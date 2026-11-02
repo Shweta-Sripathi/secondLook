@@ -167,13 +167,14 @@
 /* --- Hero --- */
 .landing-hero {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--sl-space-12);
+  grid-template-columns: 1fr minmax(0, 1fr);
+  gap: var(--sl-space-16);
   align-items: center;
   max-width: var(--sl-max-width-xl);
   margin: 0 auto;
   padding: var(--sl-space-16) var(--sl-space-8) var(--sl-space-12);
   animation: fadeRiseIn 500ms ease-out 160ms both;
+  overflow: hidden;
 }
 
 .landing-hero-badge {
@@ -266,9 +267,13 @@
   background: var(--sl-bg-white);
   border: 1px solid var(--sl-border-color);
   border-radius: var(--sl-radius-2xl);
-  padding: var(--sl-space-6);
+  padding: var(--sl-space-5);
   box-shadow: var(--sl-shadow-xl);
   animation: fadeRiseIn 700ms ease-out 300ms both;
+  box-sizing: border-box;
+  overflow: hidden;
+  max-width: 100%;
+  font-size: 0.92rem;
 }
 
 .landing-preview-badge {

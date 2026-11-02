@@ -3,13 +3,13 @@ import React from 'react';
 /**
  * secondLook Logo -- Image-based component.
  *
- * @param {"lg"|"sm"|"xs"} size - "lg" for hero, "sm" for navbar, "xs" for small
- * @param {boolean} animate - unused now, kept for API compatibility
+ * @param {"lg"|"md"|"sm"|"xs"} size
+ * @param {boolean} logoOnly - show only the image, no text
  * @param {object} style - additional inline styles
  * @param {string} className - additional CSS classes
  */
-export default function Logo({ size = 'lg', animate = true, style, className, ...rest }) {
-  const heightMap = { lg: 56, sm: 36, xs: 28 };
+export default function Logo({ size = 'lg', logoOnly = false, animate = true, style, className, ...rest }) {
+  const heightMap = { lg: 80, md: 48, sm: 36, xs: 28 };
   const h = heightMap[size] || heightMap.lg;
 
   return (
@@ -18,7 +18,7 @@ export default function Logo({ size = 'lg', animate = true, style, className, ..
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '10px',
+        gap: logoOnly ? 0 : '10px',
         ...style,
       }}
       {...rest}
@@ -34,18 +34,20 @@ export default function Logo({ size = 'lg', animate = true, style, className, ..
           flexShrink: 0,
         }}
       />
-      <span
-        style={{
-          fontFamily: "'Inter', sans-serif",
-          fontWeight: 700,
-          fontSize: size === 'lg' ? '1.5rem' : size === 'sm' ? '1.1rem' : '0.9rem',
-          letterSpacing: '-0.02em',
-          color: 'inherit',
-          lineHeight: 1,
-        }}
-      >
-        secondLook
-      </span>
+      {!logoOnly && (
+        <span
+          style={{
+            fontFamily: "'Inter', sans-serif",
+            fontWeight: 700,
+            fontSize: size === 'lg' ? '1.5rem' : size === 'md' ? '1.2rem' : size === 'sm' ? '1.1rem' : '0.9rem',
+            letterSpacing: '-0.02em',
+            color: 'inherit',
+            lineHeight: 1,
+          }}
+        >
+          secondLook
+        </span>
+      )}
     </div>
   );
 }

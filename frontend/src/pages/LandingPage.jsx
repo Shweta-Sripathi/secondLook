@@ -74,10 +74,16 @@ export default function LandingPage() {
       {!isDone && (
         <div className="landing-stage" aria-hidden={isDone}>
           <div className={`landing-logo-center ${isTraveling ? 'traveling' : ''}`}>
-            <Logo
-              size="lg"
-              animate={phase === 'logo-in' || phase === 'typing'}
-              style={{ width: 'min(380px, 70vw)', height: 'auto' }}
+            <img
+              src="/logo.jpg"
+              alt="secondLook"
+              style={{
+                width: 'min(280px, 65vw)',
+                height: 'min(280px, 65vw)',
+                borderRadius: '50%',
+                objectFit: 'cover',
+                boxShadow: '0 20px 60px rgba(37, 99, 235, 0.15), 0 0 0 8px rgba(37, 99, 235, 0.08)',
+              }}
             />
           </div>
           <div className={`landing-tagline ${isTraveling ? 'fade-up' : ''}`}>
@@ -110,40 +116,14 @@ export default function LandingPage() {
 
           {/* Hero */}
           <section className="landing-hero">
-            <div className="landing-hero-left">
-              <div className="landing-hero-badge">
-                <Sparkles size={14} />
-                Powered by Google Gemini AI
-              </div>
-              <h1 className="landing-hero-title">
-                Smarter Matches.<br />
-                <span className="landing-hero-title-accent">Less Searching.</span>
-              </h1>
-              <p className="landing-hero-subtitle">
-                Let AI do the heavy lifting — from parsing job data to delivering 
-                hyper-relevant roles tailored just for you. Get detailed ATS scores, 
-                skill-gap analysis, and evidence-backed recommendations.
-              </p>
-              <div className="landing-hero-cta-group">
-                <Link to="/register" className="landing-hero-cta">
-                  <Upload size={18} strokeWidth={2.5} />
-                  Upload Your Resume
-                  <ArrowRight size={16} />
-                </Link>
-                <Link to="/login" className="landing-hero-cta-secondary">
-                  Sign in as Recruiter
-                </Link>
-              </div>
-            </div>
-
-            <div className="landing-hero-right">
-              <div className="landing-preview-card">
+            <div className="landing-hero-right" style={{ overflow: 'hidden', minWidth: 0 }}>
+              <div className="landing-preview-card" style={{ maxWidth: '100%' }}>
                 <div className="landing-preview-badge">Live Preview</div>
 
                 {/* Score ring */}
                 <div className="landing-preview-score-section">
                   <div className="landing-score-ring" role="img" aria-label="Sample ATS score: 88 out of 100">
-                    <svg viewBox="0 0 120 120" width="110" height="110">
+                    <svg viewBox="0 0 120 120" width="90" height="90">
                       <circle cx="60" cy="60" r="52" fill="none" stroke="var(--sl-bg-gray-200)" strokeWidth="8" />
                       <circle
                         cx="60" cy="60" r="52"
@@ -198,6 +178,32 @@ export default function LandingPage() {
                     ))}
                   </div>
                 </div>
+              </div>
+            </div>
+
+            <div className="landing-hero-left">
+              <div className="landing-hero-badge">
+                <Sparkles size={14} />
+                Powered by Google Gemini AI
+              </div>
+              <h1 className="landing-hero-title">
+                Smarter Matches.<br />
+                <span className="landing-hero-title-accent">Less Searching.</span>
+              </h1>
+              <p className="landing-hero-subtitle">
+                Let AI do the heavy lifting — from parsing job data to delivering 
+                hyper-relevant roles tailored just for you. Get detailed ATS scores, 
+                skill-gap analysis, and evidence-backed recommendations.
+              </p>
+              <div className="landing-hero-cta-group">
+                <Link to="/register" className="landing-hero-cta">
+                  <Upload size={18} strokeWidth={2.5} />
+                  Upload Your Resume
+                  <ArrowRight size={16} />
+                </Link>
+                <Link to="/login" className="landing-hero-cta-secondary">
+                  Sign in as Recruiter
+                </Link>
               </div>
             </div>
           </section>

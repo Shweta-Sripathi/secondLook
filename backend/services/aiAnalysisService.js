@@ -22,7 +22,7 @@ const {
 // ---------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------
-const DEFAULT_MODEL = 'gemini-2.0-flash';
+const DEFAULT_MODEL = 'gemini-3.8-flash';
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 2000;
 const TIMEOUT_MS = 30000;

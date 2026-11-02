@@ -109,6 +109,24 @@ const analyzeResume = async (req, res, next) => {
       console.log('[secondLook] DB persistence notice:', dbErr.message);
     }
 
+    // Merge missing skills from scoring engine + AI fallback
+    const scoringMissing = jobMatchResult.missingSkills.map(m => m.skillName);
+    const aiMissing = aiResult.keywords?.missingKeywords || [];
+    const allMissing = [...new Set([...scoringMissing, ...aiMissing])];
+
+    // Merge found skills from scoring engine + AI fallback
+    const scoringFound = jobMatchResult.skillMatches.map(m => m.skillName);
+    const aiFound = aiResult.keywords?.foundKeywords || [];
+    const allFound = [...new Set([...scoringFound, ...aiFound])];
+
+    // Rebuild AI suggestions from merged missing list
+    const mergedSuggestions = allMissing.map(skill => ({
+      skill,
+      suggestion: `Consider learning ${skill} through online courses or hands-on projects. Add relevant certifications or personal projects showcasing this skill.`,
+      priority: scoringMissing.includes(skill) ? 'high' : 'medium',
+      resources: getResourceSuggestion(skill),
+    }));
+
     res.status(200).json({
       success: true,
       message: 'Resume analyzed successfully',
@@ -128,13 +146,13 @@ const analyzeResume = async (req, res, next) => {
       },
       strengths: aiResult.strengths || [],
       improvements: aiResult.improvements || [],
-      aiSuggestions,
+      aiSuggestions: mergedSuggestions,
       requirementMatches: aiResult.requirementMatches || [],
       summary: aiResult.summary,
       aiAvailable: aiResult.aiAvailable !== false,
       keywords: {
-        foundKeywords: jobMatchResult.skillMatches.map(m => m.skillName),
-        missingKeywords: jobMatchResult.missingSkills.map(m => m.skillName),
+        foundKeywords: allFound,
+        missingKeywords: allMissing,
       },
     });
   } catch (error) {
