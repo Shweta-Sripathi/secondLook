@@ -20,7 +20,7 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
-// Routes
+// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/candidate', candidateRoutes);
 app.use('/api/recruiter', recruiterRoutes);
@@ -33,19 +33,28 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-app.get('/', (req, res) => {
-  res.send('secondLook API Server');
+// Serve frontend in production
+const frontendDist = path.join(__dirname, '..', 'frontend', 'dist');
+app.use(express.static(frontendDist));
+
+// All non-API routes → serve React app (SPA routing)
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api')) return next();
+  const indexPath = path.join(frontendDist, 'index.html');
+  res.sendFile(indexPath, (err) => {
+    if (err) next();
+  });
 });
 
+// Error handlers (only for API routes)
 app.use(notFound);
 app.use(errorHandler);
 
-// Start server (works on both Render and locally)
+// Start server
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
   console.log(`[secondLook] Server running on port ${PORT}`);
   console.log(`[secondLook] Health: http://localhost:${PORT}/api/health`);
 });
 
-// Export for Vercel serverless (optional)
 module.exports = app;
